@@ -14,6 +14,15 @@ plugins:
 resources:
   # API Gateway Errors
   - ${file(resources/api-gateway-errors.yml)}
+  # Cognito Identity Pool Policy
+  - ${file(resources/cognito-policy.yml)}
+
+custom:
+  # Our stage is based on what is passed in when running serverless
+  # commands. Or falls back to what we have set in the provider section.
+  stage: ${opt:stage, self:provider.stage}
+  # Name of the SST app that's deploying our infrastructure
+  sstApp: ${self:custom.stage}-serverless-stack-notes-infra
 
 provider:
   name: aws
@@ -24,7 +33,7 @@ provider:
   # These environment variables are made available to our functions
   # under process.env.
   environment:
-    tableName: serverless-stack-notes
+    tableName: !ImportValue '${self:custom.sstApp}-TableName'
     stripeSecretKey: ${env:STRIPE_SECRET_KEY}
 
   # 'iamRoleStatements' defines the permission policy for the Lambda function.
@@ -39,7 +48,8 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
         - dynamodb:DescribeTable
-      Resource: "arn:aws:dynamodb:eu-west-2:*:*"
+      Resource:
+        - !ImportValue '${self:custom.sstApp}-TableArn'
 
 functions:
   # Defines an HTTP API endpoint that calls the main function in create.js
